@@ -1,12 +1,8 @@
 [
     {
-        "type": {
-            "name": "media-display",
-            "icon": "lni lnis-music"
-        },
-        "icon": "lni lnis-music",
-        "name": "Media Display",
-        "description": "Displays currently playing media according to system",
+        "icon": "fas fa-code",
+        "name": "Example Widget",
+        "description": "This is an example widget for development purposes",
         "platform": "all",
         "minWidth": 200,
         "minHeight": 100,
