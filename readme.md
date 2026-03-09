@@ -10,10 +10,9 @@
 </div>
 
 
-<!-- PROJECT LOGO -->
 <br />
 <div align="center">
-  <a href="https://github.com/othneildrew/Best-README-Template">
+  <a href="https://github.com/brood-works/displayduck-widget-example">
     <img src="logo.png" alt="Logo" width="80" height="80">
   </a>
 
@@ -31,7 +30,7 @@ This is an example widget for developers as template to study or fork for custom
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
-<!-- GETTING STARTED -->
+
 ## Getting Started
 This Widget has no requirements and is purely meant to demonstrate posibillities with DisplayDuck.
 
@@ -53,7 +52,6 @@ This Widget has no requirements and is purely meant to demonstrate posibillities
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 
-<!-- CONTRIBUTING -->
 ## Contributing
 
 Contributions are what make the open source community such an amazing place to learn, inspire, and create. Any contributions you make are **greatly appreciated**.
@@ -77,9 +75,6 @@ Don't forget to give the project a star! Thanks again!
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 
-
-<!-- MARKDOWN LINKS & IMAGES -->
-<!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->
 [contributors-shield]: https://img.shields.io/github/contributors/brood-works/displayduck-widget-example.svg
 [contributors-url]: https://github.com/brood-works/displayduck-widget-example/graphs/contributors
 [forks-shield]: https://img.shields.io/github/forks/brood-works/displayduck-widget-example
