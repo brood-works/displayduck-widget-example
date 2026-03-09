@@ -17,12 +17,6 @@
             "minWidth": 200,
             "minHeight": 100,
             "config": {
-                "autoHide": {
-                    "label": "Auto-hide",
-                    "subLabel": "Hide when no media is playing",
-                    "type": "boolean",
-                    "defaultValue": false
-                },
                 "exampleBoolean": {
                     "label": "Example Boolean",
                     "subLabel": "This is an example boolean config option",
@@ -41,10 +35,10 @@
                     "type": "number",
                     "defaultValue": 0
                 },
-                "exampleSelect": {
-                    "label": "Example Select",
-                    "subLabel": "This is an example select config option",
-                    "type": "select",
+                "exampleDropdown": {
+                    "label": "Example Dropdown",
+                    "subLabel": "This is an example dropdown config option",
+                    "type": "dropdown",
                     "options": [
                         "option1",
                         "option2",
