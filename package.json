@@ -1,4 +1,5 @@
 {
   "devDependencies": {
+    "@displayduck/base": "^0.1.0"
   }
 }

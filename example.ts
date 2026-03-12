@@ -1,4 +1,4 @@
-import { signal, type Signal, type WidgetContext } from '@displayduck/plugin-framework';
+import { signal, type Signal, type WidgetContext } from '@displayduck/base';
 
 export class DisplayDuckWidget {
   public title: Signal<string>;
