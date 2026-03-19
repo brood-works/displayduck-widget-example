@@ -13,6 +13,7 @@ export class DisplayDuckWidget {
     this.ctx.on('click', '#btn', () => {
       this.showConfig.set(!this.showConfig());
     });
+    console.warn('This is a console log from the example widget!'); 
   }
 
   public onDestroy(): void {

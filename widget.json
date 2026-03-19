@@ -3,7 +3,7 @@
     "name": "Example Widget",
     "description": "This is an example widget for development purposes.",
     "assets": ["src/img"],
-    "version": "0.0.1",
+    "version": "1.0.0",
     "widgets": [
         {
             "category": "utility",
