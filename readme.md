@@ -26,28 +26,35 @@
 ---
 
 ## About
-This is an example widget for developers as template to study or fork for custom widgets/packs in DisplayDuck. (including this ReadMe)
+This is a passive, single-view example widget for developers to study or fork for custom widgets and packs in DisplayDuck. It shows a live signal that switches between `true` and `false` every two seconds, displays widget configuration values, and demonstrates a local image asset and responsive styling.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 
 ## Getting Started
-This Widget has no requirements and is purely meant to demonstrate posibillities with DisplayDuck.
+Run these commands from this directory:
 
+```bash
+npm install
+npm run build
+```
+
+Use `npm run development` while editing to rebuild the pack automatically.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 ---
 
 ## Configurable options
-| Setting | Type | Configurable Values | Default Value
+| Setting | Type | Configurable Values | Default Value |
 |---|---|---|---|
-| Example Boolean | `boolean` | `true`<br />`false` | `false`
-| Example Color Picker | `color-picker` | `color` | `#ffffff`
-| Example Number | `number` | any `number` | 0
-| Example Select | `dropdown` | `option1`<br />`option2`<br />`option3` | `option1`
-| Example Widget Select | `widget-select` | `widget` | 
+| Example Boolean | `boolean` | `true`<br />`false` | `false` |
+| Example Color Picker | `color-picker` | `color` | `#ffffff` |
+| Example Number | `number` | any `number` | `0` |
+| Example Select | `select` | `option1`<br />`option2`<br />`option3` | `option1` |
+| Example Widget Select | `widget` | installed widget names | — |
 
+The widget also displays the built-in `Allow event access` and `Allow focus grab` settings.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -56,8 +63,7 @@ This Widget has no requirements and is purely meant to demonstrate posibillities
 
 Contributions are what make the open source community such an amazing place to learn, inspire, and create. Any contributions you make are **greatly appreciated**.
 
-If you have a suggestion that would make this better, please fork the repo and create a pull request. You can also simply open an issue with the tag "enhancement".
-Don't forget to give the project a star! Thanks again!
+If you have a suggestion, please fork the repo and create a pull request. You can also open an issue with the tag "enhancement".
 
 1. Fork the Project
 2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)

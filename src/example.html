@@ -4,25 +4,62 @@
       <img src="{{ASSETS}}/img/logo.png" alt="DisplayDuck Logo" />
     </div>
     <div class="text">
-      <h1>Example Widgeth</h1>
+      <p class="eyebrow">DisplayDuck Example pack</p>
+      <h1>Simple Playground</h1>
     </div>
   </div>
+
   <div class="content">
-    <p>This is an example widget for development purposes.</p>
-    <button id="btn">Show passed config</button>
-    {{#if showConfig()}}
-      <div>
-        {{#each Object.entries(config().config || {})}}
-          <div class="key-value">
-            <span class="key">
-              {{ this[0] }}:
-            </span>
-            <span class="value">
-              {{ this[1] }}
-            </span>
-          </div>
-        {{/each}}
+    <section class="card">
+        <div class="metric-list">
+        <div class="metric">
+          <span>
+            Live signal:
+          </span>
+          <strong>
+            <div class="signals">
+              <div class="signal-state {{ liveSignal() ? 'on' : 'off' }}">
+                <span class="signal-indicator"></span>
+              </div>
+              <div class="signal-state inverse {{ liveSignal() ? 'on' : 'off' }}">
+                <span class="signal-indicator"></span>
+              </div>
+            </div>
+          </strong>
+        </div>
+        <div class="metric">
+          <span>Widget has event access:</span>
+          <strong>{{ config().allowEventAccess === true ? 'true' : 'false' }}</strong>
+        </div>
+        <div class="metric">
+          <span>Widget can ask focus?:</span>
+          <strong>{{ config().allowFocusGrab === true ? 'true' : 'false' }}</strong>
+        </div>
+        <div class="metric">
+          <span>Widget example boolean:</span>
+          <strong>{{ config().exampleBoolean === true ? 'true' : 'false' }}</strong>
+        </div>
+        <div class="metric">
+          <span>Widget example color:</span>
+          <strong><span class="color-block" style="--selected-color: {{ config().exampleColorPicker || '#ffffff' }}"></span></strong>
+        </div>
+        <div class="metric">
+          <span>Widget example number:</span>
+          <strong>{{ config().exampleNumber ?? '--' }}</strong>
+        </div>
+        <div class="metric">
+          <span>Widget example number:</span>
+          <strong>{{ config().exampleNumber ?? '--' }}</strong>
+        </div>
+        <div class="metric">
+          <span>Widget dropdown value:</span>
+          <strong>{{ config().exampleDropdown ?? '--' }}</strong>
+        </div>
+        <div class="metric">
+          <span>Widget name from picker:</span>
+          <strong>{{ config().exampleWidgetPicker ?? '--' }}</strong>
+        </div>
       </div>
-    {{/if}}
+    </section>
   </div>
 </div>

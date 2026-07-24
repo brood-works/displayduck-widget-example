@@ -2,8 +2,8 @@
     "icon": "fas fa-bug",
     "name": "Example Widget",
     "description": "This is an example widget for development purposes.",
-    "assets": ["src/img"],
-    "version": "1.0.0",
+    "assets": ["img"],
+    "version": "1.1.1",
     "widgets": [
         {
             "category": "utility",
