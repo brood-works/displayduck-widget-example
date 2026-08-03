@@ -3,10 +3,10 @@
     "name": "Example Widget",
     "description": "This is an example widget for development purposes.",
     "assets": ["img"],
-    "version": "1.1.2",
+    "version": "1.1.4",
     "widgets": [
         {
-            "category": "utility",
+            "category": "development",
             "id": "example",
             "icon": "img/icon.png",
             "name": "Example Widget",

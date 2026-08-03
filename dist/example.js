@@ -1,858 +1,562 @@
-const expressionCache = /* @__PURE__ */ new Map();
-const escapeHtml = (value) => String(value ?? "").replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#39;");
-const compileExpression = (expression) => {
-  const cached = expressionCache.get(expression);
-  if (cached) {
-    return cached;
-  }
-  const transformed = expression.replace(/\bthis\b/g, "__item");
-  const fn = new Function("scope", `with (scope) { return (${transformed}); }`);
-  expressionCache.set(expression, fn);
-  return fn;
-};
-const evaluate = (expression, scope) => {
+const b = /* @__PURE__ */ new Map(), W = (s) => String(s ?? "").replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#39;"), I = (s) => {
+  const t = b.get(s);
+  if (t)
+    return t;
+  const n = s.replace(/\bthis\b/g, "__item"), e = new Function("scope", `with (scope) { return (${n}); }`);
+  return b.set(s, e), e;
+}, g = (s, t) => {
   try {
-    return compileExpression(expression)(scope);
+    return I(s)(t);
   } catch {
     return "";
   }
-};
-const parseNodes = (template2, from = 0, stopAt) => {
-  const nodes = [];
-  let index = from;
-  while (index < template2.length) {
-    const start = template2.indexOf("{{", index);
-    if (start === -1) {
-      nodes.push({ type: "text", value: template2.slice(index) });
-      return { nodes, index: template2.length };
-    }
-    if (start > index) {
-      nodes.push({ type: "text", value: template2.slice(index, start) });
-    }
-    const close = template2.indexOf("}}", start + 2);
-    if (close === -1) {
-      nodes.push({ type: "text", value: template2.slice(start) });
-      return { nodes, index: template2.length };
-    }
-    const token = template2.slice(start + 2, close).trim();
-    index = close + 2;
-    if (token === "/if" || token === "/each") {
-      if (stopAt === token) {
-        return { nodes, index };
-      }
-      nodes.push({ type: "text", value: `{{${token}}}` });
+}, m = (s, t = 0, n) => {
+  const e = [];
+  let i = t;
+  for (; i < s.length; ) {
+    const r = s.indexOf("{{", i);
+    if (r === -1)
+      return e.push({ type: "text", value: s.slice(i) }), { nodes: e, index: s.length };
+    r > i && e.push({ type: "text", value: s.slice(i, r) });
+    const o = s.indexOf("}}", r + 2);
+    if (o === -1)
+      return e.push({ type: "text", value: s.slice(r) }), { nodes: e, index: s.length };
+    const c = s.slice(r + 2, o).trim();
+    if (i = o + 2, c === "/if" || c === "/each") {
+      if (n === c)
+        return { nodes: e, index: i };
+      e.push({ type: "text", value: `{{${c}}}` });
       continue;
     }
-    if (token.startsWith("#if ")) {
-      const child = parseNodes(template2, index, "/if");
-      nodes.push({
+    if (c.startsWith("#if ")) {
+      const a = m(s, i, "/if");
+      e.push({
         type: "if",
-        condition: token.slice(4).trim(),
-        children: child.nodes
-      });
-      index = child.index;
+        condition: c.slice(4).trim(),
+        children: a.nodes
+      }), i = a.index;
       continue;
     }
-    if (token.startsWith("#each ")) {
-      const child = parseNodes(template2, index, "/each");
-      nodes.push({
+    if (c.startsWith("#each ")) {
+      const a = m(s, i, "/each");
+      e.push({
         type: "each",
-        source: token.slice(6).trim(),
-        children: child.nodes
-      });
-      index = child.index;
+        source: c.slice(6).trim(),
+        children: a.nodes
+      }), i = a.index;
       continue;
     }
-    nodes.push({ type: "expr", value: token });
+    e.push({ type: "expr", value: c });
   }
-  return { nodes, index };
-};
-const renderNodes = (nodes, scope) => {
-  let output = "";
-  for (const node of nodes) {
-    if (node.type === "text") {
-      output += node.value;
+  return { nodes: e, index: i };
+}, y = (s, t) => {
+  let n = "";
+  for (const e of s) {
+    if (e.type === "text") {
+      n += e.value;
       continue;
     }
-    if (node.type === "expr") {
-      output += escapeHtml(evaluate(node.value, scope));
+    if (e.type === "expr") {
+      n += W(g(e.value, t));
       continue;
     }
-    if (node.type === "if") {
-      if (Boolean(evaluate(node.condition, scope))) {
-        output += renderNodes(node.children, scope);
+    if (e.type === "if") {
+      g(e.condition, t) && (n += y(e.children, t));
+      continue;
+    }
+    const i = g(e.source, t);
+    if (Array.isArray(i))
+      for (const r of i) {
+        const o = Object.create(t);
+        o.__item = r, n += y(e.children, o);
       }
-      continue;
-    }
-    const items = evaluate(node.source, scope);
-    if (!Array.isArray(items)) {
-      continue;
-    }
-    for (const item of items) {
-      const childScope = Object.create(scope);
-      childScope.__item = item;
-      output += renderNodes(node.children, childScope);
-    }
   }
-  return output;
+  return n;
+}, D = (s) => {
+  const t = m(s).nodes;
+  return (n) => y(t, n);
 };
-const createTemplateRenderer = (template2) => {
-  const parsed = parseNodes(template2).nodes;
-  return (scope) => renderNodes(parsed, scope);
-};
-typeof SuppressedError === "function" ? SuppressedError : function(error, suppressed, message) {
-  var e = new Error(message);
-  return e.name = "SuppressedError", e.error = error, e.suppressed = suppressed, e;
-};
-function transformCallback(callback, once = false) {
-  return window.__TAURI_INTERNALS__.transformCallback(callback, once);
+function R(s, t = !1) {
+  return window.__TAURI_INTERNALS__.transformCallback(s, t);
 }
-async function invoke(cmd, args = {}, options) {
-  return window.__TAURI_INTERNALS__.invoke(cmd, args, options);
+async function l(s, t = {}, n) {
+  return window.__TAURI_INTERNALS__.invoke(s, t, n);
 }
-function convertFileSrc(filePath, protocol = "asset") {
-  return window.__TAURI_INTERNALS__.convertFileSrc(filePath, protocol);
+function k(s, t = "asset") {
+  return window.__TAURI_INTERNALS__.convertFileSrc(s, t);
 }
-var TauriEvent;
-(function(TauriEvent2) {
-  TauriEvent2["WINDOW_RESIZED"] = "tauri://resize";
-  TauriEvent2["WINDOW_MOVED"] = "tauri://move";
-  TauriEvent2["WINDOW_CLOSE_REQUESTED"] = "tauri://close-requested";
-  TauriEvent2["WINDOW_DESTROYED"] = "tauri://destroyed";
-  TauriEvent2["WINDOW_FOCUS"] = "tauri://focus";
-  TauriEvent2["WINDOW_BLUR"] = "tauri://blur";
-  TauriEvent2["WINDOW_SCALE_FACTOR_CHANGED"] = "tauri://scale-change";
-  TauriEvent2["WINDOW_THEME_CHANGED"] = "tauri://theme-changed";
-  TauriEvent2["WINDOW_CREATED"] = "tauri://window-created";
-  TauriEvent2["WEBVIEW_CREATED"] = "tauri://webview-created";
-  TauriEvent2["DRAG_ENTER"] = "tauri://drag-enter";
-  TauriEvent2["DRAG_OVER"] = "tauri://drag-over";
-  TauriEvent2["DRAG_DROP"] = "tauri://drag-drop";
-  TauriEvent2["DRAG_LEAVE"] = "tauri://drag-leave";
-})(TauriEvent || (TauriEvent = {}));
-async function _unlisten(event, eventId) {
-  window.__TAURI_EVENT_PLUGIN_INTERNALS__.unregisterListener(event, eventId);
-  await invoke("plugin:event|unlisten", {
-    event,
-    eventId
+var v;
+(function(s) {
+  s.WINDOW_RESIZED = "tauri://resize", s.WINDOW_MOVED = "tauri://move", s.WINDOW_CLOSE_REQUESTED = "tauri://close-requested", s.WINDOW_DESTROYED = "tauri://destroyed", s.WINDOW_FOCUS = "tauri://focus", s.WINDOW_BLUR = "tauri://blur", s.WINDOW_SCALE_FACTOR_CHANGED = "tauri://scale-change", s.WINDOW_THEME_CHANGED = "tauri://theme-changed", s.WINDOW_CREATED = "tauri://window-created", s.WEBVIEW_CREATED = "tauri://webview-created", s.DRAG_ENTER = "tauri://drag-enter", s.DRAG_OVER = "tauri://drag-over", s.DRAG_DROP = "tauri://drag-drop", s.DRAG_LEAVE = "tauri://drag-leave";
+})(v || (v = {}));
+async function T(s, t) {
+  window.__TAURI_EVENT_PLUGIN_INTERNALS__.unregisterListener(s, t), await l("plugin:event|unlisten", {
+    event: s,
+    eventId: t
   });
 }
-async function listen(event, handler, options) {
-  var _a;
-  const target = (_a = void 0) !== null && _a !== void 0 ? _a : { kind: "Any" };
-  return invoke("plugin:event|listen", {
-    event,
-    target,
-    handler: transformCallback(handler)
-  }).then((eventId) => {
-    return async () => _unlisten(event, eventId);
-  });
+async function u(s, t, n) {
+  var e;
+  const i = (e = void 0) !== null && e !== void 0 ? e : { kind: "Any" };
+  return l("plugin:event|listen", {
+    event: s,
+    target: i,
+    handler: R(t)
+  }).then((r) => async () => T(s, r));
 }
-const OPEN_EVENT = "pack-tcp-socket-open";
-const DATA_EVENT = "pack-tcp-socket-data";
-const CLOSE_EVENT = "pack-tcp-socket-close";
-const CONNECT_TIMEOUT_MS = 5e3;
-const toBase64 = (bytes) => {
-  let binary = "";
-  for (let index = 0; index < bytes.length; index += 1) {
-    binary += String.fromCharCode(bytes[index]);
-  }
-  return btoa(binary);
-};
-const fromBase64 = (value) => {
-  const binary = atob(value);
-  const bytes = new Uint8Array(binary.length);
-  for (let index = 0; index < binary.length; index += 1) {
-    bytes[index] = binary.charCodeAt(index);
-  }
-  return bytes;
-};
-const normalizeBinary = (value) => {
-  if (value instanceof Uint8Array) {
-    return value;
-  }
-  if (value instanceof ArrayBuffer) {
-    return new Uint8Array(value);
-  }
-  return Uint8Array.from(value);
-};
-const createSessionId = () => {
-  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
-    return crypto.randomUUID();
-  }
-  return `tcp-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-};
-class RuntimeTcpSocket {
-  constructor(options, hasEventAccess) {
-    this.hasEventAccess = hasEventAccess;
-    this.isConnected = false;
-    this.connecting = null;
-    this.tauriListenersReady = null;
-    this.tauriUnlisteners = [];
-    this.listeners = {
+const C = "pack-tcp-socket-open", L = "pack-tcp-socket-data", U = "pack-tcp-socket-close", O = 5e3, P = (s) => {
+  let t = "";
+  for (let n = 0; n < s.length; n += 1)
+    t += String.fromCharCode(s[n]);
+  return btoa(t);
+}, F = (s) => {
+  const t = atob(s), n = new Uint8Array(t.length);
+  for (let e = 0; e < t.length; e += 1)
+    n[e] = t.charCodeAt(e);
+  return n;
+}, N = (s) => s instanceof Uint8Array ? s : s instanceof ArrayBuffer ? new Uint8Array(s) : Uint8Array.from(s), $ = () => typeof crypto < "u" && typeof crypto.randomUUID == "function" ? crypto.randomUUID() : `tcp-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+class M {
+  constructor(t, n) {
+    this.hasLocalhostAccess = n, this.isConnected = !1, this.connecting = null, this.tauriListenersReady = null, this.tauriUnlisteners = [], this.listeners = {
       open: /* @__PURE__ */ new Set(),
       data: /* @__PURE__ */ new Set(),
       close: /* @__PURE__ */ new Set(),
       error: /* @__PURE__ */ new Set()
-    };
-    this.host = String(options.host ?? "").trim();
-    this.port = Number(options.port);
-    this.sessionId = createSessionId();
+    }, this.host = String(t.host ?? "").trim(), this.port = Number(t.port), this.sessionId = $();
   }
   get connected() {
     return this.isConnected;
   }
   async connect() {
-    if (!this.hasEventAccess) {
-      throw new Error("TCP socket access requires the Allow event access permission.");
-    }
-    if (this.isConnected) {
-      return;
-    }
-    if (this.connecting) {
-      return this.connecting;
-    }
-    if (!this.host || !Number.isInteger(this.port) || this.port < 1 || this.port > 65535) {
-      throw new Error("A valid TCP socket host and port are required.");
-    }
-    this.connecting = this.connectInternal();
-    try {
-      await this.connecting;
-    } finally {
-      this.connecting = null;
+    if (!this.hasLocalhostAccess)
+      throw new Error("TCP socket access requires the Allow localhost access permission.");
+    if (!this.isConnected) {
+      if (this.connecting)
+        return this.connecting;
+      if (!this.host || !Number.isInteger(this.port) || this.port < 1 || this.port > 65535)
+        throw new Error("A valid TCP socket host and port are required.");
+      this.connecting = this.connectInternal();
+      try {
+        await this.connecting;
+      } finally {
+        this.connecting = null;
+      }
     }
   }
-  async send(data) {
-    if (!this.isConnected) {
+  async send(t) {
+    if (!this.isConnected)
       throw new Error("TCP socket is not connected.");
-    }
-    await invoke("pack_tcp_socket_write", {
+    await l("pack_tcp_socket_write", {
       sessionId: this.sessionId,
-      dataBase64: toBase64(normalizeBinary(data))
+      dataBase64: P(N(t)),
+      allowLocalhostAccess: this.hasLocalhostAccess
     });
   }
-  async write(data) {
-    await this.send(data);
+  async write(t) {
+    await this.send(t);
   }
   async close() {
     try {
-      await invoke("pack_tcp_socket_disconnect", { sessionId: this.sessionId });
+      await l("pack_tcp_socket_disconnect", { sessionId: this.sessionId });
     } finally {
-      this.isConnected = false;
-      this.teardownTauriListeners();
+      this.isConnected = !1, this.teardownTauriListeners();
     }
   }
-  on(eventName, handler) {
-    this.listeners[eventName].add(handler);
-    return () => this.listeners[eventName].delete(handler);
+  on(t, n) {
+    return this.listeners[t].add(n), () => this.listeners[t].delete(n);
   }
   async connectInternal() {
-    await this.ensureTauriListeners();
-    await new Promise(async (resolve, reject) => {
-      let settled = false;
-      const timeoutId = setTimeout(() => {
-        if (settled) return;
-        settled = true;
-        cleanup();
-        reject(new Error(`TCP socket connection timed out for ${this.host}:${this.port}`));
-      }, CONNECT_TIMEOUT_MS);
-      const offOpen = this.on("open", () => {
-        if (settled) return;
-        settled = true;
-        cleanup();
-        resolve();
-      });
-      const offClose = this.on("close", (payload) => {
-        if (settled) return;
-        settled = true;
-        cleanup();
-        reject(new Error(payload.error ?? `TCP socket closed before opening.`));
-      });
-      const cleanup = () => {
-        clearTimeout(timeoutId);
-        offOpen();
-        offClose();
+    await this.ensureTauriListeners(), await new Promise(async (t, n) => {
+      let e = !1;
+      const i = setTimeout(() => {
+        e || (e = !0, c(), n(new Error(`TCP socket connection timed out for ${this.host}:${this.port}`)));
+      }, O), r = this.on("open", () => {
+        e || (e = !0, c(), t());
+      }), o = this.on("close", (a) => {
+        e || (e = !0, c(), n(new Error(a.error ?? "TCP socket closed before opening.")));
+      }), c = () => {
+        clearTimeout(i), r(), o();
       };
       try {
-        await invoke("pack_tcp_socket_connect", {
+        await l("pack_tcp_socket_connect", {
           sessionId: this.sessionId,
           host: this.host,
           port: this.port,
-          allowEventAccess: this.hasEventAccess
+          allowLocalhostAccess: this.hasLocalhostAccess
         });
-      } catch (error) {
-        if (settled) return;
-        settled = true;
-        cleanup();
-        reject(error);
+      } catch (a) {
+        if (e) return;
+        e = !0, c(), n(a);
       }
     });
   }
   async ensureTauriListeners() {
-    if (this.tauriListenersReady) {
-      return this.tauriListenersReady;
-    }
-    this.tauriListenersReady = (async () => {
+    return this.tauriListenersReady ? this.tauriListenersReady : (this.tauriListenersReady = (async () => {
       this.tauriUnlisteners = [
-        await listen(OPEN_EVENT, (event) => {
-          if (event.payload.sessionId !== this.sessionId) return;
-          this.isConnected = true;
-          this.emit("open", {
+        await u(C, (t) => {
+          t.payload.sessionId === this.sessionId && (this.isConnected = !0, this.emit("open", {
             host: this.host,
             port: this.port
-          });
+          }));
         }),
-        await listen(DATA_EVENT, (event) => {
-          if (event.payload.sessionId !== this.sessionId) return;
-          try {
-            this.emit("data", fromBase64(event.payload.dataBase64));
-          } catch (error) {
-            this.emit("error", {
-              host: this.host,
-              port: this.port,
-              error: error instanceof Error ? error.message : "Invalid TCP socket data."
-            });
-          }
+        await u(L, (t) => {
+          if (t.payload.sessionId === this.sessionId)
+            try {
+              this.emit("data", F(t.payload.dataBase64));
+            } catch (n) {
+              this.emit("error", {
+                host: this.host,
+                port: this.port,
+                error: n instanceof Error ? n.message : "Invalid TCP socket data."
+              });
+            }
         }),
-        await listen(CLOSE_EVENT, (event) => {
-          if (event.payload.sessionId !== this.sessionId) return;
-          this.isConnected = false;
-          if (event.payload.error) {
-            this.emit("error", {
-              host: this.host,
-              port: this.port,
-              error: event.payload.error
-            });
-          }
-          this.emit("close", {
+        await u(U, (t) => {
+          t.payload.sessionId === this.sessionId && (this.isConnected = !1, t.payload.error && this.emit("error", {
             host: this.host,
             port: this.port,
-            error: event.payload.error
-          });
+            error: t.payload.error
+          }), this.emit("close", {
+            host: this.host,
+            port: this.port,
+            error: t.payload.error
+          }));
         })
       ];
-    })();
-    return this.tauriListenersReady;
+    })(), this.tauriListenersReady);
   }
   teardownTauriListeners() {
-    for (const unlisten of this.tauriUnlisteners) {
+    for (const t of this.tauriUnlisteners)
       try {
-        unlisten();
+        t();
       } catch {
       }
-    }
-    this.tauriUnlisteners = [];
-    this.tauriListenersReady = null;
+    this.tauriUnlisteners = [], this.tauriListenersReady = null;
   }
-  emit(eventName, payload) {
-    for (const listener of this.listeners[eventName]) {
-      listener(payload);
-    }
+  emit(t, n) {
+    for (const e of this.listeners[t])
+      e(n);
   }
 }
-const isSignal = (value) => {
-  if (typeof value !== "function") {
-    return false;
-  }
-  const candidate = value;
-  return candidate._isSignal === true && typeof candidate.set === "function" && typeof candidate.subscribe === "function";
-};
-const signal = (initialValue) => {
-  let current = initialValue;
-  const subscribers = /* @__PURE__ */ new Set();
-  const read = (() => current);
-  read._isSignal = true;
-  read.set = (value) => {
-    if (Object.is(current, value)) {
-      return;
+const V = (s) => {
+  if (typeof s != "function")
+    return !1;
+  const t = s;
+  return t._isSignal === !0 && typeof t.set == "function" && typeof t.subscribe == "function";
+}, p = (s) => {
+  let t = s;
+  const n = /* @__PURE__ */ new Set(), e = (() => t);
+  return e._isSignal = !0, e.set = (i) => {
+    if (!Object.is(t, i)) {
+      t = i;
+      for (const r of n)
+        r(t);
     }
-    current = value;
-    for (const subscriber of subscribers) {
-      subscriber(current);
-    }
-  };
-  read.update = (updater) => {
-    read.set(updater(current));
-  };
-  read.subscribe = (subscriber) => {
-    subscribers.add(subscriber);
-    return () => subscribers.delete(subscriber);
-  };
-  return read;
-};
-const focusWidgetView = (configuredWidgetId, requestId = "") => invoke("controller_widget_focus_view", {
-  configuredWidgetId,
-  requestId
-});
-const isWidgetViewFocused = async (configuredWidgetId, focusRequestId) => {
-  const requestId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-  let unlisten = null;
-  let resolveResponse = null;
-  const response = new Promise((resolve) => {
-    resolveResponse = resolve;
+  }, e.update = (i) => {
+    e.set(i(t));
+  }, e.subscribe = (i) => (n.add(i), () => n.delete(i)), e;
+}, z = (s, t = "") => l("controller_widget_focus_view", {
+  configuredWidgetId: s,
+  requestId: t
+}), B = async (s, t) => {
+  const n = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  let e = null, i = null;
+  const r = new Promise((o) => {
+    i = o;
   });
   try {
-    unlisten = await listen(
+    return e = await u(
       "displayduck-widget-focus-state-response",
-      (event) => {
-        if (event.payload.requestId !== requestId || event.payload.configuredWidgetId !== configuredWidgetId) {
-          return;
-        }
-        resolveResponse?.(event.payload.focused === true);
+      (o) => {
+        o.payload.requestId !== n || o.payload.configuredWidgetId !== s || i?.(o.payload.focused === !0);
       }
-    );
-    await invoke("controller_widget_get_focus_state", {
-      configuredWidgetId,
-      focusRequestId,
-      requestId
-    });
-    return await Promise.race([
-      response,
-      new Promise((resolve) => setTimeout(() => resolve(false), 1e3))
+    ), await l("controller_widget_get_focus_state", {
+      configuredWidgetId: s,
+      focusRequestId: t,
+      requestId: n
+    }), await Promise.race([
+      r,
+      new Promise((o) => setTimeout(() => o(!1), 1e3))
     ]);
   } finally {
-    unlisten?.();
+    e?.();
   }
-};
-const setWidgetFocusRequirement = (configuredWidgetId, required, requestId) => invoke("controller_widget_set_focus_requirement", {
-  configuredWidgetId,
-  required,
-  requestId
-});
-const bindSignals = (source, onChange) => {
-  const unsubscribers = [];
-  for (const key of Object.keys(source)) {
-    const value = source[key];
-    if (isSignal(value)) {
-      unsubscribers.push(value.subscribe(() => onChange()));
-    }
+}, q = (s, t, n) => l("controller_widget_set_focus_requirement", {
+  configuredWidgetId: s,
+  required: t,
+  requestId: n
+}), j = (s, t) => {
+  const n = [];
+  for (const e of Object.keys(s)) {
+    const i = s[e];
+    V(i) && n.push(i.subscribe(() => t()));
   }
   return () => {
-    for (const unsubscribe of unsubscribers) {
-      unsubscribe();
-    }
+    for (const e of n)
+      e();
   };
-};
-const createScope = (instance, payload) => {
-  return new Proxy(
-    { payload },
-    {
-      get(target, property) {
-        if (typeof property !== "string") {
-          return void 0;
-        }
-        if (property in target) {
-          return target[property];
-        }
-        const value = instance[property];
-        if (typeof value === "function") {
-          return value.bind(instance);
-        }
-        return value;
-      },
-      has(target, property) {
-        if (typeof property !== "string") {
-          return false;
-        }
-        return property in target || property in instance;
-      }
+}, G = (s, t) => new Proxy(
+  { payload: t },
+  {
+    get(n, e) {
+      if (typeof e != "string")
+        return;
+      if (e in n)
+        return n[e];
+      const i = s[e];
+      return typeof i == "function" ? i.bind(s) : i;
+    },
+    has(n, e) {
+      return typeof e != "string" ? !1 : e in n || e in s;
     }
-  );
-};
-const RELATIVE_URL_ATTRIBUTES = ["src", "href", "poster"];
-const PACK_INSTALL_PATH_PLACEHOLDER = "{{pack-install-path}}/";
-const ASSETS_PLACEHOLDER = "{{ASSETS}}";
-const isExternalAssetUrl = (value) => {
-  const trimmed = value.trim();
-  return trimmed.length === 0 || trimmed.startsWith("data:") || trimmed.startsWith("blob:") || trimmed.startsWith("http://") || trimmed.startsWith("https://") || trimmed.startsWith("file:") || trimmed.startsWith("asset:") || trimmed.startsWith("mailto:") || trimmed.startsWith("tel:") || trimmed.startsWith("javascript:") || trimmed.startsWith("//") || trimmed.startsWith("/") || trimmed.startsWith("#");
-};
-const extractWidgetRelativePath = (value) => {
-  const trimmed = value.trim();
-  if (!trimmed) {
+  }
+), H = ["src", "href", "poster"], J = "{{pack-install-path}}/", S = "{{ASSETS}}", K = (s) => {
+  const t = s.trim();
+  return t.length === 0 || t.startsWith("data:") || t.startsWith("blob:") || t.startsWith("http://") || t.startsWith("https://") || t.startsWith("file:") || t.startsWith("asset:") || t.startsWith("mailto:") || t.startsWith("tel:") || t.startsWith("javascript:") || t.startsWith("//") || t.startsWith("/") || t.startsWith("#");
+}, Q = (s) => {
+  const t = s.trim();
+  if (!t)
     return null;
-  }
-  if (!isExternalAssetUrl(trimmed)) {
-    return trimmed.replace(/^\.\/+/, "").replace(/^\/+/, "");
-  }
-  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+  if (!K(t))
+    return t.replace(/^\.\/+/, "").replace(/^\/+/, "");
+  if (t.startsWith("http://") || t.startsWith("https://"))
     try {
-      const url = new URL(trimmed);
-      if (url.origin === window.location.origin) {
-        return `${url.pathname}${url.search}${url.hash}`.replace(/^\/+/, "");
-      }
+      const n = new URL(t);
+      if (n.origin === window.location.origin)
+        return `${n.pathname}${n.search}${n.hash}`.replace(/^\/+/, "");
     } catch {
       return null;
     }
-  }
   return null;
-};
-const normalizeJoinedAssetPath = (widgetDirectory, relativePath) => {
-  const normalizedBase = widgetDirectory.replaceAll("\\", "/").replace(/\/+$/, "");
-  const combined = `${normalizedBase}/${relativePath.trim()}`;
-  const segments = combined.split("/");
-  const resolved = [];
-  for (const segment of segments) {
-    if (!segment || segment === ".") {
-      if (resolved.length === 0 && combined.startsWith("/")) {
-        resolved.push("");
-      }
+}, X = (s, t) => {
+  const n = s.replaceAll("\\", "/").replace(/\/+$/, ""), e = `${n}/${t.trim()}`, i = e.split("/"), r = [];
+  for (const o of i) {
+    if (!o || o === ".") {
+      r.length === 0 && e.startsWith("/") && r.push("");
       continue;
     }
-    if (segment === "..") {
-      if (resolved.length > 1 || resolved.length === 1 && resolved[0] !== "") {
-        resolved.pop();
-      }
+    if (o === "..") {
+      (r.length > 1 || r.length === 1 && r[0] !== "") && r.pop();
       continue;
     }
-    resolved.push(segment);
+    r.push(o);
   }
-  return resolved.join("/") || normalizedBase;
-};
-const resolveAssetUrl = (widgetDirectory, value) => {
-  const relativePath = extractWidgetRelativePath(value);
-  if (!widgetDirectory || !relativePath) {
-    return value;
-  }
+  return r.join("/") || n;
+}, h = (s, t) => {
+  const n = Q(t);
+  if (!s || !n)
+    return t;
   try {
-    return convertFileSrc(normalizeJoinedAssetPath(widgetDirectory, relativePath));
+    return k(X(s, n));
   } catch {
-    return value;
+    return t;
   }
-};
-const resolveAssetsBaseUrl = (widgetDirectory) => {
-  const normalizedDirectory = widgetDirectory.trim().replaceAll("\\", "/").replace(/\/+$/, "");
-  if (!normalizedDirectory) {
+}, Y = (s) => {
+  const t = s.trim().replaceAll("\\", "/").replace(/\/+$/, "");
+  if (!t)
     return "";
-  }
   try {
-    return convertFileSrc(normalizedDirectory);
+    return k(t);
   } catch {
-    return normalizedDirectory;
+    return t;
   }
-};
-const rewriteSrcset = (value, widgetDirectory) => {
-  return value.split(",").map((entry) => {
-    const trimmed = entry.trim();
-    if (!trimmed) {
-      return trimmed;
-    }
-    const [url, descriptor] = trimmed.split(/\s+/, 2);
-    const nextUrl = resolveAssetUrl(widgetDirectory, url);
-    return descriptor ? `${nextUrl} ${descriptor}` : nextUrl;
-  }).join(", ");
-};
-const rewriteInlineStyleUrls = (value, widgetDirectory) => {
-  return value.replace(/url\(\s*(['"]?)([^'")]+)\1\s*\)/gi, (full, quote, urlValue) => {
-    const nextUrl = resolveAssetUrl(widgetDirectory, urlValue);
-    if (nextUrl === urlValue) {
-      return full;
-    }
-    return `url("${nextUrl}")`;
-  });
-};
-const rewriteElementAssetUrls = (element, widgetDirectory) => {
-  for (const attribute of RELATIVE_URL_ATTRIBUTES) {
-    const currentValue = element.getAttribute(attribute);
-    if (!currentValue) {
+}, Z = (s, t) => s.split(",").map((n) => {
+  const e = n.trim();
+  if (!e)
+    return e;
+  const [i, r] = e.split(/\s+/, 2), o = h(t, i);
+  return r ? `${o} ${r}` : o;
+}).join(", "), tt = (s, t) => s.replace(/url\(\s*(['"]?)([^'")]+)\1\s*\)/gi, (n, e, i) => {
+  const r = h(t, i);
+  return r === i ? n : `url("${r}")`;
+}), w = (s, t) => {
+  for (const i of H) {
+    const r = s.getAttribute(i);
+    if (!r)
       continue;
-    }
-    const nextValue = resolveAssetUrl(widgetDirectory, currentValue);
-    if (nextValue !== currentValue) {
-      element.setAttribute(attribute, nextValue);
-    }
+    const o = h(t, r);
+    o !== r && s.setAttribute(i, o);
   }
-  const currentSrcset = element.getAttribute("srcset");
-  if (currentSrcset) {
-    const nextSrcset = rewriteSrcset(currentSrcset, widgetDirectory);
-    if (nextSrcset !== currentSrcset) {
-      element.setAttribute("srcset", nextSrcset);
-    }
+  const n = s.getAttribute("srcset");
+  if (n) {
+    const i = Z(n, t);
+    i !== n && s.setAttribute("srcset", i);
   }
-  const currentStyle = element.getAttribute("style");
-  if (currentStyle) {
-    const nextStyle = rewriteInlineStyleUrls(currentStyle, widgetDirectory);
-    if (nextStyle !== currentStyle) {
-      element.setAttribute("style", nextStyle);
-    }
+  const e = s.getAttribute("style");
+  if (e) {
+    const i = tt(e, t);
+    i !== e && s.setAttribute("style", i);
   }
-};
-const rewriteTreeAssetUrls = (root, widgetDirectory) => {
-  if (!widgetDirectory) {
-    return;
+}, A = (s, t) => {
+  if (t) {
+    s instanceof Element && w(s, t);
+    for (const n of Array.from(s.querySelectorAll("*")))
+      w(n, t);
   }
-  if (root instanceof Element) {
-    rewriteElementAssetUrls(root, widgetDirectory);
-  }
-  for (const element of Array.from(root.querySelectorAll("*"))) {
-    rewriteElementAssetUrls(element, widgetDirectory);
-  }
-};
-const rewriteInstallPathPlaceholders = (input, widgetDirectory) => {
-  if (!widgetDirectory) {
-    return input;
-  }
-  let output = input;
-  const assetsBaseUrl = resolveAssetsBaseUrl(widgetDirectory);
-  if (assetsBaseUrl && output.includes(ASSETS_PLACEHOLDER)) {
-    output = output.replaceAll(ASSETS_PLACEHOLDER, assetsBaseUrl);
-  }
-  if (!output.includes(PACK_INSTALL_PATH_PLACEHOLDER)) {
-    return output;
-  }
-  return output.replace(/\{\{pack-install-path\}\}\/([^"')\s]+)/g, (full, relativePath) => {
-    return resolveAssetUrl(widgetDirectory, relativePath);
-  });
-};
-const extractFontFaceRules = (styles2) => {
-  const fontFacePattern = /@font-face\s*\{[^{}]*\}/gi;
-  const fontStyles = styles2.match(fontFacePattern)?.join("\n") ?? "";
+}, _ = (s, t) => {
+  if (!t)
+    return s;
+  let n = s;
+  const e = Y(t);
+  return e && n.includes(S) && (n = n.replaceAll(S, e)), n.includes(J) ? n.replace(/\{\{pack-install-path\}\}\/([^"')\s]+)/g, (i, r) => h(t, r)) : n;
+}, et = (s) => {
+  const t = /@font-face\s*\{[^{}]*\}/gi, n = s.match(t)?.join(`
+`) ?? "";
   return {
-    scopedStyles: fontStyles ? styles2.replace(fontFacePattern, "") : styles2,
-    fontStyles
+    scopedStyles: n ? s.replace(t, "") : s,
+    fontStyles: n
   };
-};
-const createWidgetClass = (WidgetImpl, options) => {
-  return class RuntimeWidget {
-    constructor({
-      mount,
-      payload,
-      setLoading
-    }) {
-      this.cleanups = [];
-      this.hasRendered = false;
-      this.renderScheduled = false;
-      this.destroyed = false;
-      this.globalFontStyle = null;
-      this.focusRequestId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-      this.widgetDirectory = "";
-      this.mount = mount;
-      this.payload = payload ?? {};
-      this.setLoading = typeof setLoading === "function" ? setLoading : (() => {
-      });
-      this.assetObserver = new MutationObserver((mutations) => {
-        if (!this.widgetDirectory) {
-          return;
-        }
-        for (const mutation of mutations) {
-          if (mutation.type === "attributes" && mutation.target instanceof Element) {
-            rewriteElementAssetUrls(mutation.target, this.widgetDirectory);
+}, st = (s, t) => class {
+  constructor({
+    mount: e,
+    payload: i,
+    setLoading: r
+  }) {
+    this.cleanups = [], this.hasRendered = !1, this.renderScheduled = !1, this.destroyed = !1, this.globalFontStyle = null, this.focusRequestId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`, this.widgetDirectory = "", this.mount = e, this.payload = i ?? {}, this.setLoading = typeof r == "function" ? r : (() => {
+    }), this.assetObserver = new MutationObserver((o) => {
+      if (this.widgetDirectory)
+        for (const c of o) {
+          if (c.type === "attributes" && c.target instanceof Element) {
+            w(c.target, this.widgetDirectory);
             continue;
           }
-          for (const node of Array.from(mutation.addedNodes)) {
-            if (node instanceof Element) {
-              rewriteTreeAssetUrls(node, this.widgetDirectory);
-            }
-          }
+          for (const a of Array.from(c.addedNodes))
+            a instanceof Element && A(a, this.widgetDirectory);
         }
-      });
-      this.logic = new WidgetImpl({
-        mount,
-        payload: this.payload,
-        setLoading: (loading) => this.setLoading(Boolean(loading)),
-        focusWidgetView: () => focusWidgetView(
-          String(this.payload?.configuredWidgetId ?? "").trim(),
-          this.focusRequestId
-        ),
-        isWidgetViewFocused: () => isWidgetViewFocused(
-          String(this.payload?.configuredWidgetId ?? "").trim(),
-          this.focusRequestId
-        ),
-        setRequireFocus: (required) => setWidgetFocusRequirement(
-          String(this.payload?.configuredWidgetId ?? "").trim(),
-          Boolean(required),
-          this.focusRequestId
-        ),
-        createTcpSocket: (options2) => new RuntimeTcpSocket(
-          options2,
-          this.hasEventAccessPermission()
-        ),
-        on: (eventName, selector, handler) => this.on(eventName, selector, handler)
-      });
-      this.cleanupSignalSubscriptions = bindSignals(this.logic, () => this.scheduleRender());
-      this.assetObserver.observe(this.mount, {
-        subtree: true,
-        childList: true,
-        attributes: true,
-        attributeFilter: ["src", "href", "poster", "srcset", "style"]
-      });
+    }), this.logic = new s({
+      mount: e,
+      payload: this.payload,
+      setLoading: (o) => this.setLoading(!!o),
+      focusWidgetView: () => z(
+        String(this.payload?.configuredWidgetId ?? "").trim(),
+        this.focusRequestId
+      ),
+      isWidgetViewFocused: () => B(
+        String(this.payload?.configuredWidgetId ?? "").trim(),
+        this.focusRequestId
+      ),
+      setRequireFocus: (o) => q(
+        String(this.payload?.configuredWidgetId ?? "").trim(),
+        !!o,
+        this.focusRequestId
+      ),
+      createTcpSocket: (o) => new M(
+        o,
+        this.hasLocalhostAccessPermission()
+      ),
+      on: (o, c, a) => this.on(o, c, a)
+    }), this.cleanupSignalSubscriptions = j(this.logic, () => this.scheduleRender()), this.assetObserver.observe(this.mount, {
+      subtree: !0,
+      childList: !0,
+      attributes: !0,
+      attributeFilter: ["src", "href", "poster", "srcset", "style"]
+    });
+  }
+  onInit() {
+    this.render(), this.logic.onInit?.();
+  }
+  onUpdate(e) {
+    this.payload = e ?? {}, this.logic.onUpdate?.(this.payload), this.render();
+  }
+  onDestroy() {
+    for (this.destroyed = !0, this.renderScheduled = !1, this.globalFontStyle?.remove(), this.globalFontStyle = null, this.cleanupSignalSubscriptions(); this.cleanups.length > 0; )
+      this.cleanups.pop()?.();
+    this.assetObserver.disconnect(), this.logic.onDestroy?.(), this.mount.innerHTML = "", this.hasRendered = !1;
+  }
+  hasLocalhostAccessPermission() {
+    const e = this.payload?.config;
+    return !!(e && typeof e == "object" && e.allowEventAccess === !0);
+  }
+  render() {
+    this.renderScheduled = !1;
+    const e = G(this.logic, this.payload);
+    this.widgetDirectory = String(
+      this.payload?.widgetDirectory ?? this.payload?.directory ?? ""
+    ).trim();
+    const i = _(t.template, this.widgetDirectory), r = _(t.styles, this.widgetDirectory), { scopedStyles: o, fontStyles: c } = et(r);
+    this.syncGlobalFontStyle(c);
+    const f = D(i)(e), d = `<style>${o}</style>${f}`;
+    this.hasRendered ? this.reconcileMarkup(d) : (this.mount.innerHTML = d, this.hasRendered = !0), this.mount.setAttribute("data-displayduck-render-empty", f.trim().length === 0 ? "true" : "false"), A(this.mount, this.widgetDirectory), this.logic.afterRender?.();
+  }
+  syncGlobalFontStyle(e) {
+    if (!e) {
+      this.globalFontStyle?.remove(), this.globalFontStyle = null;
+      return;
     }
-    onInit() {
-      this.render();
-      this.logic.onInit?.();
+    this.globalFontStyle || (this.globalFontStyle = this.mount.ownerDocument.createElement("style"), this.globalFontStyle.dataset.displayduckPackFonts = "true", this.mount.ownerDocument.head.appendChild(this.globalFontStyle)), this.globalFontStyle.textContent !== e && (this.globalFontStyle.textContent = e);
+  }
+  scheduleRender() {
+    this.renderScheduled || this.destroyed || (this.renderScheduled = !0, queueMicrotask(() => {
+      !this.destroyed && this.renderScheduled && this.render();
+    }));
+  }
+  reconcileMarkup(e) {
+    const i = document.createElement("div");
+    i.innerHTML = e, this.reconcileChildren(this.mount, i);
+  }
+  reconcileChildren(e, i) {
+    const r = Array.from(e.childNodes), o = Array.from(i.childNodes), c = Math.min(r.length, o.length);
+    for (let a = 0; a < c; a += 1)
+      this.reconcileNode(r[a], o[a]);
+    for (let a = c; a < o.length; a += 1)
+      e.appendChild(o[a].cloneNode(!0));
+    for (let a = r.length - 1; a >= o.length; a -= 1)
+      r[a].remove();
+  }
+  reconcileNode(e, i) {
+    if (e.nodeType !== i.nodeType) {
+      e.replaceWith(i.cloneNode(!0));
+      return;
     }
-    onUpdate(payload) {
-      this.payload = payload ?? {};
-      this.logic.onUpdate?.(this.payload);
-      this.render();
+    if (e.nodeType === Node.TEXT_NODE) {
+      e.nodeValue !== i.nodeValue && (e.nodeValue = i.nodeValue);
+      return;
     }
-    onDestroy() {
-      this.destroyed = true;
-      this.renderScheduled = false;
-      this.globalFontStyle?.remove();
-      this.globalFontStyle = null;
-      this.cleanupSignalSubscriptions();
-      while (this.cleanups.length > 0) {
-        const cleanup = this.cleanups.pop();
-        cleanup?.();
-      }
-      this.assetObserver.disconnect();
-      this.logic.onDestroy?.();
-      this.mount.innerHTML = "";
-      this.hasRendered = false;
-    }
-    hasEventAccessPermission() {
-      const config = this.payload?.config;
-      return Boolean(
-        config && typeof config === "object" && config.allowEventAccess === true
-      );
-    }
-    render() {
-      this.renderScheduled = false;
-      const scope = createScope(this.logic, this.payload);
-      this.widgetDirectory = String(
-        this.payload?.widgetDirectory ?? this.payload?.directory ?? ""
-      ).trim();
-      const finalTemplate = rewriteInstallPathPlaceholders(options.template, this.widgetDirectory);
-      const finalStyles = rewriteInstallPathPlaceholders(options.styles, this.widgetDirectory);
-      const { scopedStyles, fontStyles } = extractFontFaceRules(finalStyles);
-      this.syncGlobalFontStyle(fontStyles);
-      const renderTemplate = createTemplateRenderer(finalTemplate);
-      const html = renderTemplate(scope);
-      const nextMarkup = `<style>${scopedStyles}</style>${html}`;
-      if (!this.hasRendered) {
-        this.mount.innerHTML = nextMarkup;
-        this.hasRendered = true;
-      } else {
-        this.reconcileMarkup(nextMarkup);
-      }
-      this.mount.setAttribute("data-displayduck-render-empty", html.trim().length === 0 ? "true" : "false");
-      rewriteTreeAssetUrls(this.mount, this.widgetDirectory);
-      this.logic.afterRender?.();
-    }
-    syncGlobalFontStyle(fontStyles) {
-      if (!fontStyles) {
-        this.globalFontStyle?.remove();
-        this.globalFontStyle = null;
+    if (!(!(e instanceof Element) || !(i instanceof Element))) {
+      if (e.tagName !== i.tagName) {
+        e.replaceWith(i.cloneNode(!0));
         return;
       }
-      if (!this.globalFontStyle) {
-        this.globalFontStyle = this.mount.ownerDocument.createElement("style");
-        this.globalFontStyle.dataset.displayduckPackFonts = "true";
-        this.mount.ownerDocument.head.appendChild(this.globalFontStyle);
-      }
-      if (this.globalFontStyle.textContent !== fontStyles) {
-        this.globalFontStyle.textContent = fontStyles;
-      }
+      for (const r of Array.from(e.attributes))
+        i.hasAttribute(r.name) || e.removeAttribute(r.name);
+      for (const r of Array.from(i.attributes))
+        e.getAttribute(r.name) !== r.value && e.setAttribute(r.name, r.value);
+      this.reconcileChildren(e, i);
     }
-    scheduleRender() {
-      if (this.renderScheduled || this.destroyed) {
-        return;
-      }
-      this.renderScheduled = true;
-      queueMicrotask(() => {
-        if (!this.destroyed && this.renderScheduled) {
-          this.render();
-        }
-      });
-    }
-    reconcileMarkup(markup) {
-      const nextMount = document.createElement("div");
-      nextMount.innerHTML = markup;
-      this.reconcileChildren(this.mount, nextMount);
-    }
-    reconcileChildren(currentParent, nextParent) {
-      const currentChildren = Array.from(currentParent.childNodes);
-      const nextChildren = Array.from(nextParent.childNodes);
-      const sharedLength = Math.min(currentChildren.length, nextChildren.length);
-      for (let index = 0; index < sharedLength; index += 1) {
-        this.reconcileNode(currentChildren[index], nextChildren[index]);
-      }
-      for (let index = sharedLength; index < nextChildren.length; index += 1) {
-        currentParent.appendChild(nextChildren[index].cloneNode(true));
-      }
-      for (let index = currentChildren.length - 1; index >= nextChildren.length; index -= 1) {
-        currentChildren[index].remove();
-      }
-    }
-    reconcileNode(currentNode, nextNode) {
-      if (currentNode.nodeType !== nextNode.nodeType) {
-        currentNode.replaceWith(nextNode.cloneNode(true));
-        return;
-      }
-      if (currentNode.nodeType === Node.TEXT_NODE) {
-        if (currentNode.nodeValue !== nextNode.nodeValue) {
-          currentNode.nodeValue = nextNode.nodeValue;
-        }
-        return;
-      }
-      if (!(currentNode instanceof Element) || !(nextNode instanceof Element)) {
-        return;
-      }
-      if (currentNode.tagName !== nextNode.tagName) {
-        currentNode.replaceWith(nextNode.cloneNode(true));
-        return;
-      }
-      for (const attribute of Array.from(currentNode.attributes)) {
-        if (!nextNode.hasAttribute(attribute.name)) {
-          currentNode.removeAttribute(attribute.name);
-        }
-      }
-      for (const attribute of Array.from(nextNode.attributes)) {
-        if (currentNode.getAttribute(attribute.name) !== attribute.value) {
-          currentNode.setAttribute(attribute.name, attribute.value);
-        }
-      }
-      this.reconcileChildren(currentNode, nextNode);
-    }
-    on(eventName, selector, handler) {
-      const listener = (event) => {
-        const target = event.target;
-        const matched = target?.closest(selector);
-        if (!matched || !this.mount.contains(matched)) {
-          return;
-        }
-        handler(event, matched);
-      };
-      this.mount.addEventListener(eventName, listener);
-      const cleanup = () => this.mount.removeEventListener(eventName, listener);
-      this.cleanups.push(cleanup);
-      return cleanup;
-    }
-  };
+  }
+  on(e, i, r) {
+    const o = (a) => {
+      const d = a.target?.closest(i);
+      !d || !this.mount.contains(d) || r(a, d);
+    };
+    this.mount.addEventListener(e, o);
+    const c = () => this.mount.removeEventListener(e, o);
+    return this.cleanups.push(c), c;
+  }
+}, x = (s) => {
+  const t = s.config;
+  return t && typeof t == "object" ? t : {};
 };
-const readConfig = (payload) => {
-  const config = payload.config;
-  return config && typeof config === "object" ? config : {};
-};
-let DisplayDuckWidget$1 = class DisplayDuckWidget {
-  constructor(ctx) {
-    this.ctx = ctx;
-    this.timer = null;
-    this.payload = signal(ctx.payload ?? {});
-    this.config = signal(readConfig(ctx.payload ?? {}));
-    this.liveSignal = signal(false);
+let nt = class {
+  constructor(t) {
+    this.ctx = t, this.timer = null, this.payload = p(t.payload ?? {}), this.config = p(x(t.payload ?? {})), this.liveSignal = p(!1);
   }
   onInit() {
     this.timer = setInterval(() => {
-      this.liveSignal.update((value) => !value);
-    }, 2e3);
-    console.info("[DisplayDuck Example] signal demo initialized", {
+      this.liveSignal.update((t) => !t);
+    }, 2e3), console.info("[DisplayDuck Example] signal demo initialized", {
       payload: this.payload(),
       config: this.config()
     });
   }
-  onUpdate(payload) {
-    this.payload.set(payload ?? {});
-    this.config.set(readConfig(payload ?? {}));
+  onUpdate(t) {
+    this.payload.set(t ?? {}), this.config.set(x(t ?? {}));
   }
   onDestroy() {
-    if (this.timer !== null) {
-      clearInterval(this.timer);
-      this.timer = null;
-    }
+    this.timer !== null && (clearInterval(this.timer), this.timer = null);
   }
 };
-const template = `<div class="widget">
+const it = `<div class="widget">
   <div class="title">
     <div class="image">
       <img src="{{ASSETS}}/img/logo.png" alt="DisplayDuck Logo" />
@@ -882,7 +586,7 @@ const template = `<div class="widget">
           </strong>
         </div>
         <div class="metric">
-          <span>Widget has event access:</span>
+          <span>Widget has localhost access:</span>
           <strong>{{ config().allowEventAccess === true ? 'true' : 'false' }}</strong>
         </div>
         <div class="metric">
@@ -917,14 +621,9 @@ const template = `<div class="widget">
     </section>
   </div>
 </div>
-`;
-const styles = ".widget {\n  --accent: var(--color-primary);\n  height: calc(var(--host-height) - 0.5em);\n  width: calc(var(--host-width) - 0.5em);\n  color: var(--color-text);\n  font-size: clamp(0.5em, var(--host-width) / 40, 1em);\n  border: 1px solid color-mix(in srgb, var(--accent) 70%, transparent);\n  border-radius: 0.75em;\n  box-sizing: border-box;\n  overflow: auto;\n  background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.015));\n}\n.widget.theme-ocean {\n  --accent: #28b8d8;\n}\n.widget.theme-sunset {\n  --accent: #ff795f;\n}\n.widget .title {\n  display: flex;\n  align-items: center;\n  gap: 0.75em;\n  padding: 0.8em 1em;\n  border-bottom: 1px solid rgba(255, 255, 255, 0.12);\n}\n.widget .title .image {\n  display: flex;\n  flex: 0 0 2.5em;\n  height: 2.5em;\n  padding: 0.35em;\n  border-radius: 0.6em;\n  background: color-mix(in srgb, var(--accent) 22%, transparent);\n}\n.widget .title .image img {\n  width: 100%;\n  height: auto;\n  object-fit: contain;\n}\n.widget .title .text {\n  min-width: 0;\n  flex: 1;\n}\n.widget .title .text h1,\n.widget .title .text p {\n  margin: 0;\n}\n.widget .title .text h1 {\n  font-size: 1.35em;\n}\n.widget .title .text .eyebrow {\n  margin-bottom: 0.15em;\n}\n.widget .title .status {\n  display: flex;\n  align-items: center;\n  gap: 0.35em;\n  margin-top: 0.25em;\n  color: rgba(255, 255, 255, 0.62);\n  font-size: 0.72em;\n  letter-spacing: 0.08em;\n  font-weight: 700;\n}\n.widget .title .status.is-running {\n  color: #7ee6ad;\n}\n.widget .title .status .status-dot {\n  width: 0.55em;\n  height: 0.55em;\n  border-radius: 50%;\n  background: currentColor;\n}\n.widget .eyebrow {\n  color: var(--accent);\n  font-size: 0.7em;\n  font-weight: 800;\n  letter-spacing: 0.12em;\n  text-transform: uppercase;\n}\n.widget h2 {\n  margin: 0.2em 0 0;\n  font-size: 1.05em;\n}\n.widget .content {\n  padding: 1em;\n}\n.widget .card {\n  padding: 1em;\n  border: 1px solid rgba(255, 255, 255, 0.1);\n  border-radius: 0.65em;\n  background: rgba(0, 0, 0, 0.13);\n}\n.widget .card-heading {\n  display: flex;\n  align-items: flex-start;\n  justify-content: space-between;\n  gap: 1em;\n}\n.widget .value-pill {\n  flex: 0 0 auto;\n  border-radius: 99em;\n  padding: 0.35em 0.6em;\n  background: color-mix(in srgb, var(--accent) 18%, transparent);\n  color: var(--accent);\n  font-size: 0.75em;\n  font-weight: 700;\n}\n.widget .metric {\n  display: flex;\n  justify-content: space-between;\n  gap: 1em;\n  color: rgba(255, 255, 255, 0.68);\n  font-size: 0.8em;\n}\n.widget .metric strong {\n  color: var(--color-text);\n}\n.widget .metric .color-block {\n  --selected-color: black;\n  display: inline-block;\n  height: 1em;\n  aspect-ratio: 2/1;\n  background: var(--selected-color);\n}\n.widget .last-action,\n.widget .hint {\n  margin: 1em 0 0;\n  color: rgba(255, 255, 255, 0.58);\n  font-size: 0.8em;\n}\n.widget .metric-list,\n.widget .config-list {\n  display: flex;\n  flex-wrap: wrap;\n}\n.widget .metric {\n  flex: 48%;\n  padding-left: 1%;\n  padding-right: 1%;\n  padding-bottom: 0.55em;\n  border-bottom: 1px solid rgba(255, 255, 255, 0.08);\n}\n.widget .metric:last-child {\n  border: 0;\n  padding-bottom: 0;\n}\n.widget .signals {\n  display: flex;\n}\n.widget .signals .signal-state {\n  display: flex;\n  align-items: center;\n  font-size: 1.1em;\n}\n.widget .signals .signal-state.on {\n  color: #7ee6ad;\n}\n.widget .signals .signal-state.off {\n  color: rgba(255, 255, 255, 0.65);\n}\n.widget .signals .signal-state.inverse.on {\n  color: rgba(255, 255, 255, 0.65);\n}\n.widget .signals .signal-state.inverse.off {\n  color: #e67e7e;\n}\n.widget .signals .signal-state strong {\n  color: inherit;\n}\n.widget .signals .signal-state .signal-indicator {\n  width: 0.7em;\n  height: 0.7em;\n  border-radius: 50%;\n  background: currentColor;\n  box-shadow: 0 0 0.7em currentColor;\n}\n.widget .signals .signal-state .signal-indicator:first-child {\n  margin-right: 0.5em;\n}\n.widget .detail-banner {\n  margin-top: 1em;\n  padding: 0.65em;\n  border-left: 3px solid var(--accent);\n  background: color-mix(in srgb, var(--accent) 12%, transparent);\n  font-size: 0.82em;\n}\n.widget .key-value {\n  display: flex;\n  justify-content: space-between;\n  gap: 1em;\n  padding-bottom: 0.5em;\n  border-bottom: 1px solid rgba(255, 255, 255, 0.08);\n}\n.widget .key-value .key {\n  color: rgba(255, 255, 255, 0.6);\n}\n.widget .key-value .value {\n  overflow-wrap: anywhere;\n  text-align: right;\n}\n.widget code {\n  border-radius: 0.25em;\n  padding: 0.1em 0.25em;\n  background: rgba(0, 0, 0, 0.25);\n  color: var(--accent);\n}";
-const DisplayDuckWidget2 = createWidgetClass(DisplayDuckWidget$1, { template, styles });
-const Widget = DisplayDuckWidget2;
-const displayduckPackExample_example_entry = { DisplayDuckWidget: DisplayDuckWidget2, Widget };
+`, rt = ".widget{--accent: var(--color-primary);height:calc(var(--host-height) - .5em);width:calc(var(--host-width) - .5em);color:var(--color-text);font-size:clamp(.5em,var(--host-width) / 40,1em);border:1px solid color-mix(in srgb,var(--accent) 70%,transparent);border-radius:.75em;box-sizing:border-box;overflow:auto;background:linear-gradient(135deg,#ffffff14,#ffffff04)}.widget.theme-ocean{--accent: #28b8d8}.widget.theme-sunset{--accent: #ff795f}.widget .title{display:flex;align-items:center;gap:.75em;padding:.8em 1em;border-bottom:1px solid rgba(255,255,255,.12)}.widget .title .image{display:flex;flex:0 0 2.5em;height:2.5em;padding:.35em;border-radius:.6em;background:color-mix(in srgb,var(--accent) 22%,transparent)}.widget .title .image img{width:100%;height:auto;object-fit:contain}.widget .title .text{min-width:0;flex:1}.widget .title .text h1,.widget .title .text p{margin:0}.widget .title .text h1{font-size:1.35em}.widget .title .text .eyebrow{margin-bottom:.15em}.widget .title .status{display:flex;align-items:center;gap:.35em;margin-top:.25em;color:#ffffff9e;font-size:.72em;letter-spacing:.08em;font-weight:700}.widget .title .status.is-running{color:#7ee6ad}.widget .title .status .status-dot{width:.55em;height:.55em;border-radius:50%;background:currentColor}.widget .eyebrow{color:var(--accent);font-size:.7em;font-weight:800;letter-spacing:.12em;text-transform:uppercase}.widget h2{margin:.2em 0 0;font-size:1.05em}.widget .content{padding:1em}.widget .card{padding:1em;border:1px solid rgba(255,255,255,.1);border-radius:.65em;background:#00000021}.widget .card-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:1em}.widget .value-pill{flex:0 0 auto;border-radius:99em;padding:.35em .6em;background:color-mix(in srgb,var(--accent) 18%,transparent);color:var(--accent);font-size:.75em;font-weight:700}.widget .metric{display:flex;justify-content:space-between;gap:1em;color:#ffffffad;font-size:.8em}.widget .metric strong{color:var(--color-text)}.widget .metric .color-block{--selected-color: black;display:inline-block;height:1em;aspect-ratio:2/1;background:var(--selected-color)}.widget .last-action,.widget .hint{margin:1em 0 0;color:#ffffff94;font-size:.8em}.widget .metric-list,.widget .config-list{display:flex;flex-wrap:wrap}.widget .metric{flex:48%;padding-left:1%;padding-right:1%;padding-bottom:.55em;border-bottom:1px solid rgba(255,255,255,.08)}.widget .metric:last-child{border:0;padding-bottom:0}.widget .signals{display:flex}.widget .signals .signal-state{display:flex;align-items:center;font-size:1.1em}.widget .signals .signal-state.on{color:#7ee6ad}.widget .signals .signal-state.off,.widget .signals .signal-state.inverse.on{color:#ffffffa6}.widget .signals .signal-state.inverse.off{color:#e67e7e}.widget .signals .signal-state strong{color:inherit}.widget .signals .signal-state .signal-indicator{width:.7em;height:.7em;border-radius:50%;background:currentColor;box-shadow:0 0 .7em currentColor}.widget .signals .signal-state .signal-indicator:first-child{margin-right:.5em}.widget .detail-banner{margin-top:1em;padding:.65em;border-left:3px solid var(--accent);background:color-mix(in srgb,var(--accent) 12%,transparent);font-size:.82em}.widget .key-value{display:flex;justify-content:space-between;gap:1em;padding-bottom:.5em;border-bottom:1px solid rgba(255,255,255,.08)}.widget .key-value .key{color:#fff9}.widget .key-value .value{overflow-wrap:anywhere;text-align:right}.widget code{border-radius:.25em;padding:.1em .25em;background:#00000040;color:var(--accent)}", E = st(nt, { template: it, styles: rt }), ot = E, lt = { DisplayDuckWidget: E, Widget: ot };
 export {
-  DisplayDuckWidget2 as DisplayDuckWidget,
-  Widget,
-  displayduckPackExample_example_entry as default
+  E as DisplayDuckWidget,
+  ot as Widget,
+  lt as default
 };
-//# sourceMappingURL=example.js.map
