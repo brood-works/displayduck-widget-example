@@ -1,14 +1,14 @@
 {
-    "icon": "fas fa-bug",
+    "icon": "img/icon.png",
     "name": "Example Widget",
     "description": "This is an example widget for development purposes.",
     "assets": ["img"],
-    "version": "1.1.1",
+    "version": "1.1.2",
     "widgets": [
         {
             "category": "utility",
             "id": "example",
-            "icon": "fas fa-code",
+            "icon": "img/icon.png",
             "name": "Example Widget",
             "description": "This is an example widget for development purposes",
             "platform": "all",
