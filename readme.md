@@ -54,7 +54,7 @@ Use `npm run development` while editing to rebuild the pack automatically.
 | Example Select | `select` | `option1`<br />`option2`<br />`option3` | `option1` |
 | Example Widget Select | `widget` | installed widget names | — |
 
-The widget also displays the built-in `Allow event access` and `Allow focus grab` settings.
+The widget also displays the built-in `Allow localhost access` and `Allow focus grab` settings.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
